@@ -1,0 +1,12 @@
+{
+  "updatedAt": "2024-01-01",
+  "provider": "enercity Hannover",
+  "electricityPricePerKwh": 0.31,
+  "feedInTariff": {
+    "upTo10kWp": 0.0812,
+    "upTo40kWp": 0.0790,
+    "upTo100kWp": 0.0771
+  },
+  "electricityPriceInflationPerYear": 0.04,
+  "notes": "Preise Stand Q1 2024. Einspeisevergütung gilt für Anlagen in Betrieb genommen 2024."
+}

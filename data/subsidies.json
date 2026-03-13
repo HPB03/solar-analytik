@@ -1,0 +1,56 @@
+{
+  "subsidies": [
+    {
+      "id": "kfw-270",
+      "name": "KfW 270 – Erneuerbare Energien",
+      "type": "loan",
+      "amount": 150000,
+      "description": "Günstige Kredite bis 150.000 € für Solaranlagen. Zinssatz ab 4,38% p.a.",
+      "url": "https://www.kfw.de/inlandsfoerderung/Privatpersonen/Bestandsimmobilien/Finanzierungsangebote/Erneuerbare-Energien-Standard-(270)/",
+      "conditions": {
+        "minSystemKwp": 1,
+        "maxSystemKwp": 1000
+      }
+    },
+    {
+      "id": "proklima-solar",
+      "name": "proKlima – Solarstrom",
+      "type": "grant",
+      "amount": 500,
+      "amountPerKwp": 50,
+      "maxAmount": 1000,
+      "description": "Zuschuss von 50 €/kWp, max. 1.000 € für PV-Anlagen in der Region Hannover.",
+      "url": "https://www.proklima.de/foerderung/",
+      "conditions": {
+        "region": "Region Hannover",
+        "minSystemKwp": 2,
+        "maxSystemKwp": 20
+      }
+    },
+    {
+      "id": "proklima-battery",
+      "name": "proKlima – Batteriespeicher",
+      "type": "grant",
+      "amount": 300,
+      "amountPerKwh": 100,
+      "maxAmount": 1500,
+      "description": "Zuschuss von 100 €/kWh Speicherkapazität, max. 1.500 € für neue Batteriespeicher.",
+      "url": "https://www.proklima.de/foerderung/",
+      "conditions": {
+        "region": "Region Hannover",
+        "requiresPV": true
+      }
+    },
+    {
+      "id": "mwst-befreiung",
+      "name": "0% MwSt auf PV-Anlagen",
+      "type": "tax",
+      "amount": 0,
+      "description": "Seit 01.01.2023 gilt 0% Mehrwertsteuer auf Kauf und Installation von PV-Anlagen bis 30 kWp.",
+      "url": "https://www.bundesfinanzministerium.de",
+      "conditions": {
+        "maxSystemKwp": 30
+      }
+    }
+  ]
+}

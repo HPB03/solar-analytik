@@ -1,0 +1,43 @@
+{
+  "panels": {
+    "budget": {
+      "name": "Budget",
+      "brand": "Longi / JA Solar",
+      "efficiency": 0.195,
+      "powerWp": 400,
+      "sizM2": 1.7,
+      "pricePerKwp": 800,
+      "warrantyYears": 12,
+      "degradationPerYear": 0.007,
+      "tempCoefficient": -0.0035
+    },
+    "mid": {
+      "name": "Standard",
+      "brand": "Risen / Canadian Solar",
+      "efficiency": 0.215,
+      "powerWp": 430,
+      "sizM2": 1.72,
+      "pricePerKwp": 1100,
+      "warrantyYears": 15,
+      "degradationPerYear": 0.005,
+      "tempCoefficient": -0.003
+    },
+    "premium": {
+      "name": "Premium",
+      "brand": "SunPower / REC / Panasonic",
+      "efficiency": 0.235,
+      "powerWp": 470,
+      "sizM2": 1.74,
+      "pricePerKwp": 1400,
+      "warrantyYears": 25,
+      "degradationPerYear": 0.003,
+      "tempCoefficient": -0.0025
+    }
+  },
+  "inverters": {
+    "efficiency": 0.97,
+    "costPerKwp": 150
+  },
+  "mountingCostPerM2": 80,
+  "installationCostPerKwp": 300
+}
