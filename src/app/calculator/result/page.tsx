@@ -8,156 +8,12 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { SolarIrradiance, PanelTier } from "@/lib/types";
-import {
-  HANNOVER_OPTIMAL_TILT,
-  ELECTRICITY_PRICE_PER_KWH,
-  FEED_IN_TARIFF,
-  SYSTEM_LOSSES,
-  SELF_CONSUMPTION_WITHOUT_BATTERY,
-  SELF_CONSUMPTION_WITH_BATTERY,
-  BATTERY_COST_PER_KWH,
-  TYPICAL_BATTERY_KWH,
-} from "@/lib/constants";
+import { HANNOVER_OPTIMAL_TILT, TYPICAL_BATTERY_KWH } from "@/lib/constants";
+import { calculateEnergy } from "@/modules/M4-energy-calc";
+import { calculateFinancials } from "@/modules/M5-financial-calc";
 import panelsData from "../../../../data/panels.json";
-import tariffsData from "../../../../data/tariffs-hannover.json";
-import subsidiesData from "../../../../data/subsidies.json";
 
 const MONTHS_DE = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
-
-function calculateResults(
-  solar: SolarIrradiance,
-  monthlyBill: number,
-  panelTier: PanelTier,
-  roofAreaM2: number,
-  withBattery: boolean,
-  hasEV: boolean
-) {
-  const panel = panelsData.panels[panelTier];
-  const inverterEff = panelsData.inverters.efficiency;
-
-  // Number of panels that fit on roof
-  const panelCount = Math.floor(roofAreaM2 / panel.sizM2);
-  const systemSizeKwp = (panelCount * panel.powerWp) / 1000;
-
-  // Annual production (kWh)
-  const totalLoss =
-    SYSTEM_LOSSES.temperature +
-    SYSTEM_LOSSES.cable +
-    (1 - inverterEff) +
-    SYSTEM_LOSSES.mismatch;
-
-  const annualProduction = Math.round(
-    solar.annualIrradiance * systemSizeKwp * (1 - totalLoss)
-  );
-
-  // Monthly production proportional to irradiance
-  const irradianceSum = solar.monthlyIrradiance.reduce((a, b) => a + b, 0);
-  const monthlyProduction = solar.monthlyIrradiance.map((irr) =>
-    Math.round((irr / irradianceSum) * annualProduction)
-  );
-
-  // Annual consumption from monthly bill
-  const annualConsumption = Math.round((monthlyBill / ELECTRICITY_PRICE_PER_KWH) * 12);
-  const extraConsumption = (hasEV ? 2000 : 0);
-  const totalConsumption = annualConsumption + extraConsumption;
-
-  // Self-consumption
-  const selfConsumptionRate = withBattery
-    ? SELF_CONSUMPTION_WITH_BATTERY
-    : SELF_CONSUMPTION_WITHOUT_BATTERY;
-
-  const selfConsumed = Math.round(Math.min(annualProduction * selfConsumptionRate, totalConsumption));
-  const gridFeedIn = annualProduction - selfConsumed;
-  const coveragePercent = Math.round((selfConsumed / totalConsumption) * 100);
-
-  // Financial
-  const feedInRate = systemSizeKwp <= 10 ? FEED_IN_TARIFF.upTo10kWp : FEED_IN_TARIFF.upTo40kWp;
-  const feedInRevenue = Math.round(gridFeedIn * feedInRate);
-  const savedOnBill = Math.round(selfConsumed * ELECTRICITY_PRICE_PER_KWH);
-  const annualSavings = savedOnBill + feedInRevenue;
-
-  // Installation cost
-  const panelCost = systemSizeKwp * panel.pricePerKwp;
-  const inverterCost = systemSizeKwp * panelsData.inverters.costPerKwp;
-  const mountingCost = roofAreaM2 * panelsData.mountingCostPerM2 * 0.5;
-  const installCost = panelCost + inverterCost + mountingCost;
-  const batteryCost = withBattery ? TYPICAL_BATTERY_KWH * BATTERY_COST_PER_KWH : 0;
-  const totalCost = installCost + batteryCost;
-
-  // Subsidies
-  const proklimaSolar = subsidiesData.subsidies.find((s) => s.id === "proklima-solar")!;
-  const proklimaBattery = subsidiesData.subsidies.find((s) => s.id === "proklima-battery")!;
-
-  const subsidyGrants: number[] = [];
-  const subsidyNames: string[] = [];
-
-  const proklimaSolarAmt = Math.min(
-    systemSizeKwp * (proklimaSolar.amountPerKwp ?? 0),
-    proklimaSolar.maxAmount ?? 0
-  );
-  subsidyGrants.push(proklimaSolarAmt);
-  subsidyNames.push(`proKlima Solar: €${proklimaSolarAmt.toFixed(0)}`);
-
-  if (withBattery) {
-    const proklimaBatteryAmt = Math.min(
-      TYPICAL_BATTERY_KWH * (proklimaBattery.amountPerKwh ?? 0),
-      proklimaBattery.maxAmount ?? 0
-    );
-    subsidyGrants.push(proklimaBatteryAmt);
-    subsidyNames.push(`proKlima Speicher: €${proklimaBatteryAmt.toFixed(0)}`);
-  }
-
-  const totalSubsidies = subsidyGrants.reduce((a, b) => a + b, 0);
-  const netCost = totalCost - totalSubsidies;
-
-  // Payback
-  const paybackYears = annualSavings > 0 ? netCost / annualSavings : 99;
-
-  // 25-year ROI
-  let cumSavings = 0;
-  for (let y = 1; y <= 25; y++) {
-    const degradation = Math.pow(1 - panel.degradationPerYear, y);
-    const inflationBonus = Math.pow(1 + tariffsData.electricityPriceInflationPerYear, y);
-    cumSavings += annualSavings * degradation * inflationBonus;
-  }
-  const roi25Years = Math.round(cumSavings - netCost);
-
-  // Verdict
-  let verdict: "profitable" | "marginal" | "not_profitable";
-  let score: number;
-  if (paybackYears < 12) {
-    verdict = "profitable";
-    score = Math.round(10 - paybackYears * 0.4);
-  } else if (paybackYears < 18) {
-    verdict = "marginal";
-    score = Math.round(7 - (paybackYears - 12) * 0.3);
-  } else {
-    verdict = "not_profitable";
-    score = Math.max(1, Math.round(5 - paybackYears * 0.2));
-  }
-  score = Math.min(10, Math.max(1, score));
-
-  return {
-    panelCount,
-    systemSizeKwp,
-    annualProduction,
-    monthlyProduction,
-    selfConsumed,
-    gridFeedIn,
-    coveragePercent,
-    feedInRevenue,
-    savedOnBill,
-    annualSavings,
-    totalCost: Math.round(totalCost),
-    netCost: Math.round(netCost),
-    totalSubsidies: Math.round(totalSubsidies),
-    subsidyNames,
-    paybackYears: Math.round(paybackYears * 10) / 10,
-    roi25Years,
-    verdict,
-    score,
-  };
-}
 
 function ResultContent() {
   const sp = useSearchParams();
@@ -201,8 +57,15 @@ function ResultContent() {
 
   // Assume ~30m² usable roof area (will be replaced by M2 data)
   const roofAreaM2 = 30;
+  const withBattery = activeScenario === "with_battery";
 
-  const res = calculateResults(solar, monthlyBill, panelTier, roofAreaM2, activeScenario === "with_battery", hasEV);
+  const energy = calculateEnergy({ solar, monthlyBill, panelTier, roofAreaM2, hasEV, withBattery });
+  const financial = calculateFinancials({ energy, withBattery, panelTier, roofAreaM2 });
+
+  const res = {
+    ...energy,
+    ...financial,
+  };
 
   const verdictConfig = {
     profitable: {
