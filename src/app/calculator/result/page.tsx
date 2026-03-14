@@ -11,7 +11,9 @@ import { SolarIrradiance, RoofAnalysis, PanelTier } from "@/lib/types";
 import { HANNOVER_OPTIMAL_TILT, TYPICAL_BATTERY_KWH } from "@/lib/constants";
 import { calculateEnergy } from "@/modules/M4-energy-calc";
 import { calculateFinancials } from "@/modules/M5-financial-calc";
+import { generateRecommendations } from "@/modules/M6-recommendations";
 import { RoofViewer } from "@/components/roof-viewer/RoofViewer";
+import { RecommendationCard } from "@/components/recommendation-card/RecommendationCard";
 import panelsData from "../../../../data/panels.json";
 
 const MONTHS_DE = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
@@ -87,6 +89,16 @@ function ResultContent() {
   const financial = calculateFinancials({ energy, withBattery, panelTier, roofAreaM2 });
 
   const res = { ...energy, ...financial };
+
+  const recommendations = roof
+    ? generateRecommendations({
+        roof,
+        solar,
+        energy,
+        financial,
+        userInput: { monthlyBill, hasEV, wantsBattery: wantsBattery as "yes" | "no" | "unsure", panelTier },
+      })
+    : null;
 
   const verdictConfig = {
     profitable: {
@@ -379,6 +391,13 @@ function ResultContent() {
             )}
           </div>
         </div>
+
+        {/* Recommendations */}
+        {recommendations && (
+          <div className="mb-8">
+            <RecommendationCard recommendations={recommendations} />
+          </div>
+        )}
 
         {/* Full monthly chart */}
         <div className="bg-solar-card border border-solar-border rounded-xl p-5">
