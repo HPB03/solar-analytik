@@ -182,7 +182,7 @@ function ResultContent() {
               <div className="flex justify-between items-center">
                 <span className="text-solar-text-secondary text-sm">Installationskosten</span>
                 <span className="text-solar-text font-semibold tabular-nums">
-                  €{res.totalCost.toLocaleString("de")}
+                  €{res.installationCostRange.min.toLocaleString("de")} – €{res.installationCostRange.max.toLocaleString("de")}
                 </span>
               </div>
               <div className="flex justify-between items-center">
@@ -192,7 +192,7 @@ function ResultContent() {
                 </span>
               </div>
               <div className="flex justify-between items-center border-t border-solar-border pt-3">
-                <span className="text-solar-text-secondary text-sm">Nettokosten</span>
+                <span className="text-solar-text-secondary text-sm">Nettokosten (ca.)</span>
                 <span className="text-solar-text font-bold tabular-nums text-lg">
                   €{res.netCost.toLocaleString("de")}
                 </span>
@@ -209,11 +209,27 @@ function ResultContent() {
                   {res.roi25Years > 0 ? "+" : ""}€{res.roi25Years.toLocaleString("de")}
                 </span>
               </div>
+              <div className="flex justify-between items-center">
+                <span className="text-solar-text-secondary text-sm">NPV (diskontiert)</span>
+                <span className={`font-semibold tabular-nums text-sm ${res.npv > 0 ? "text-solar-success" : "text-solar-danger"}`}>
+                  {res.npv > 0 ? "+" : ""}€{res.npv.toLocaleString("de")}
+                </span>
+              </div>
             </div>
-            <div className="mt-4 pt-4 border-t border-solar-border">
-              <p className="text-solar-text-muted text-xs">
-                {res.subsidyNames.join(" · ")}
-              </p>
+            <div className="mt-4 pt-4 border-t border-solar-border space-y-1">
+              {res.availableSubsidies.filter(s => s.amount > 0).map(s => (
+                <div key={s.id} className="flex justify-between items-center">
+                  <a href={s.url} target="_blank" rel="noopener noreferrer"
+                     className="text-solar-accent text-xs hover:underline">{s.name}</a>
+                  <span className="text-solar-success text-xs font-medium">€{s.amount.toLocaleString("de")}</span>
+                </div>
+              ))}
+              {res.availableSubsidies.filter(s => s.type === "loan").map(s => (
+                <div key={s.id} className="text-solar-text-muted text-xs">
+                  💳 <a href={s.url} target="_blank" rel="noopener noreferrer"
+                        className="hover:text-solar-accent">{s.name} (Kredit)</a>
+                </div>
+              ))}
             </div>
           </div>
 
