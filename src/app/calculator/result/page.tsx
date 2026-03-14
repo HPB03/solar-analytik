@@ -80,7 +80,10 @@ function ResultContent() {
   const roofAreaM2 = roof?.roofArea ?? 30;
   const withBattery = activeScenario === "with_battery";
 
-  const energy = calculateEnergy({ solar, monthlyBill, panelTier, roofAreaM2, hasEV, withBattery });
+  const energy = calculateEnergy({
+    solar, monthlyBill, panelTier, roofAreaM2, hasEV, withBattery,
+    shadingFactor: roof?.shadingFactor ?? 0,
+  });
   const financial = calculateFinancials({ energy, withBattery, panelTier, roofAreaM2 });
 
   const res = { ...energy, ...financial };
