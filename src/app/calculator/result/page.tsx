@@ -7,10 +7,11 @@ import {
   XCircle, Loader2, Battery, Car
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
-import { SolarIrradiance, PanelTier } from "@/lib/types";
+import { SolarIrradiance, RoofAnalysis, PanelTier } from "@/lib/types";
 import { HANNOVER_OPTIMAL_TILT, TYPICAL_BATTERY_KWH } from "@/lib/constants";
 import { calculateEnergy } from "@/modules/M4-energy-calc";
 import { calculateFinancials } from "@/modules/M5-financial-calc";
+import { RoofViewer } from "@/components/roof-viewer/RoofViewer";
 import panelsData from "../../../../data/panels.json";
 
 const MONTHS_DE = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
@@ -27,19 +28,40 @@ function ResultContent() {
   const panelTier = (sp.get("panelTier") ?? "mid") as PanelTier;
 
   const [solar, setSolar] = useState<SolarIrradiance | null>(null);
+  const [roof, setRoof] = useState<RoofAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeScenario, setActiveScenario] = useState<"no_battery" | "with_battery">(
     wantsBattery === "yes" ? "with_battery" : "no_battery"
   );
 
   useEffect(() => {
-    fetch(`/api/solar-data?lat=${lat}&lng=${lng}&tilt=${HANNOVER_OPTIMAL_TILT}&azimuth=0`)
-      .then((r) => r.json())
-      .then((data) => {
-        setSolar(data);
+    async function loadData() {
+      try {
+        // Step 1: roof analysis (determines real tilt + azimuth)
+        const roofRes = await fetch(`/api/roof-analysis?lat=${lat}&lng=${lng}`);
+        const roofData: RoofAnalysis = await roofRes.json();
+        setRoof(roofData);
+
+        // Step 2: solar irradiance using actual roof orientation
+        const solarRes = await fetch(
+          `/api/solar-data?lat=${lat}&lng=${lng}&tilt=${roofData.tilt}&azimuth=${roofData.azimuth}`
+        );
+        setSolar(await solarRes.json());
+      } catch {
+        // Fallback: use Hannover defaults
+        try {
+          const solarRes = await fetch(
+            `/api/solar-data?lat=${lat}&lng=${lng}&tilt=${HANNOVER_OPTIMAL_TILT}&azimuth=0`
+          );
+          setSolar(await solarRes.json());
+        } catch {
+          // leave solar null
+        }
+      } finally {
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      }
+    }
+    loadData();
   }, [lat, lng]);
 
   if (loading) {
@@ -55,17 +77,13 @@ function ResultContent() {
 
   if (!solar) return null;
 
-  // Assume ~30m² usable roof area (will be replaced by M2 data)
-  const roofAreaM2 = 30;
+  const roofAreaM2 = roof?.roofArea ?? 30;
   const withBattery = activeScenario === "with_battery";
 
   const energy = calculateEnergy({ solar, monthlyBill, panelTier, roofAreaM2, hasEV, withBattery });
   const financial = calculateFinancials({ energy, withBattery, panelTier, roofAreaM2 });
 
-  const res = {
-    ...energy,
-    ...financial,
-  };
+  const res = { ...energy, ...financial };
 
   const verdictConfig = {
     profitable: {
@@ -290,33 +308,56 @@ function ResultContent() {
               <Home className="w-5 h-5 text-solar-text-secondary" />
               <h3 className="font-semibold text-solar-text">Ihr Dach</h3>
             </div>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-solar-text-secondary text-sm">Nutzfläche</span>
-                <span className="text-solar-text font-semibold tabular-nums">~{roofAreaM2} m²</span>
+
+            {roof ? (
+              <>
+                <RoofViewer roofData={roof} />
+                <div className="space-y-3 mt-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-solar-text-secondary text-sm">Nutzfläche</span>
+                    <span className="text-solar-text font-semibold tabular-nums">{roofAreaM2} m²</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-solar-text-secondary text-sm">Neigungswinkel</span>
+                    <span className="text-solar-text font-semibold">
+                      {roof.tilt}° (optimal: {roof.optimalTilt}°)
+                    </span>
+                  </div>
+                  {roof.tiltLossPercent > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-solar-text-secondary text-sm">Neigungsverlust</span>
+                      <span className="text-solar-warning font-semibold">−{roof.tiltLossPercent}%</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-solar-text-secondary text-sm">Sonnenstunden/Jahr</span>
+                    <span className="text-solar-text font-semibold tabular-nums">
+                      {solar.sunHoursPerYear.toLocaleString("de")}
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-solar-text-secondary text-sm">Nutzfläche</span>
+                  <span className="text-solar-text font-semibold tabular-nums">~{roofAreaM2} m²</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-solar-text-secondary text-sm">Optimaler Neigungswinkel</span>
+                  <span className="text-solar-text font-semibold">{HANNOVER_OPTIMAL_TILT}°</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-solar-text-secondary text-sm">Sonnenstunden/Jahr</span>
+                  <span className="text-solar-text font-semibold tabular-nums">
+                    {solar.sunHoursPerYear.toLocaleString("de")}
+                  </span>
+                </div>
+                <p className="text-solar-text-muted text-xs pt-2">
+                  Daten via PVGIS (EU JRC). Für präzise Dachanalyse: Foto hochladen.
+                </p>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-solar-text-secondary text-sm">Optimaler Neigungswinkel</span>
-                <span className="text-solar-text font-semibold">{HANNOVER_OPTIMAL_TILT}°</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-solar-text-secondary text-sm">Sonnenstunden/Jahr</span>
-                <span className="text-solar-text font-semibold tabular-nums">
-                  {solar.sunHoursPerYear.toLocaleString("de")}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-solar-text-secondary text-sm">Jahrseinstrahlung</span>
-                <span className="text-solar-text font-semibold tabular-nums">
-                  {solar.annualIrradiance} kWh/m²
-                </span>
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-solar-border">
-              <p className="text-solar-text-muted text-xs">
-                Daten via PVGIS (EU JRC). Für präzise Dachanalyse: Foto hochladen (demnächst).
-              </p>
-            </div>
+            )}
           </div>
         </div>
 

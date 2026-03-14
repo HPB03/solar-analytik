@@ -56,3 +56,6 @@ export const TYPICAL_BATTERY_KWH = 7.5;
 // Self consumption rate with/without battery
 export const SELF_CONSUMPTION_WITHOUT_BATTERY = 0.30;
 export const SELF_CONSUMPTION_WITH_BATTERY = 0.70;
+
+// Fraction of roof segment area that is practically usable for panels
+export const ROOF_USABILITY_FACTOR = 0.75;
