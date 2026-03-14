@@ -1,2 +1,3 @@
 export { fetchSolarData } from "./pvgisClient";
-export type { SolarIrradiance } from "@/lib/types";
+export { fetchCurrentWeather, estimateTodayFactor } from "./weatherClient";
+export type { SolarIrradiance, CurrentWeather } from "@/lib/types";

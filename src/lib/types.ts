@@ -29,11 +29,22 @@ export interface RoofAnalysis {
 }
 
 // M3 — Solar Irradiance
+export interface CurrentWeather {
+  temperature: number;
+  feelsLike: number;
+  cloudCover: number;
+  description: string;
+  icon: string;
+  windSpeed: number;
+  city: string;
+}
+
 export interface SolarIrradiance {
   monthlyIrradiance: number[];
   annualIrradiance: number;
   sunHoursPerYear: number;
   avgTemperature: number[];
+  currentWeather?: CurrentWeather;
 }
 
 // M4 — Energy Production

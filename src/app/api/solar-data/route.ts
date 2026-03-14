@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchSolarData } from "@/modules/M3-solar-data/pvgisClient";
+import { fetchCurrentWeather } from "@/modules/M3-solar-data/weatherClient";
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
@@ -13,8 +14,12 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const data = await fetchSolarData({ lat, lng, tilt, azimuth });
-    return NextResponse.json(data);
+    const [solar, weather] = await Promise.all([
+      fetchSolarData({ lat, lng, tilt, azimuth }),
+      fetchCurrentWeather(lat, lng),
+    ]);
+
+    return NextResponse.json({ ...solar, currentWeather: weather });
   } catch {
     return NextResponse.json({ error: "Solar data fetch failed" }, { status: 500 });
   }
